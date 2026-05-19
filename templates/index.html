@@ -1,244 +1,53 @@
 <!DOCTYPE html>
-<html lang="pt-br" data-bs-theme="dark">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Louvemos Digital</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
-    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        :root {
-            --bg-overlay: rgba(15, 12, 32, 0.5);
-            --blur-amount: 12px;
-        }
-
         body {
-            background-image: url('/static/unnamed.jpg');
+            background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.8)), url('/static/unnamed.jpg') no-repeat center center fixed;
             background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            min-height: 100vh;
-            transition: background 0.3s ease;
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
         }
-
-        [data-bs-theme="light"] {
-            --bg-overlay: rgba(255, 255, 255, 0.75);
-            color: #2b2b2b !important;
+        .container-principal {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 50px;
         }
-        [data-bs-theme="light"] .card-custom {
-            background: rgba(255, 255, 255, 0.7);
-            color: #2b2b2b !important;
-            border: 1px solid rgba(0,0,0,0.1);
+        .item-musica {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            margin-bottom: 10px;
+            border-radius: 8px !important;
         }
-        [data-bs-theme="light"] .text-title, [data-bs-theme="light"] h4 { 
-            color: #2b2b2b !important; 
-            text-shadow: none; 
-        }
-
-        .navbar-custom {
-            background-color: var(--bg-overlay) !important;
-            backdrop-filter: blur(var(--blur-amount));
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .text-title {
-            text-shadow: 0px 4px 12px rgba(0, 0, 0, 0.7);
-        }
-        .card-custom {
-            background: rgba(15, 12, 32, 0.4);
-            backdrop-filter: blur(var(--blur-amount));
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 12px;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .card-custom:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(138, 43, 226, 0.4);
-        }
-        .admin-panel {
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(15px);
-            border: 1px dashed #ffc107;
-        }
-        .img-container img {
-            max-width: 100%;
+        .item-musica:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #ffca28;
         }
     </style>
 </head>
-<body class="d-flex flex-column">
-
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom shadow-sm mb-4">
-        <div class="container d-flex justify-content-between align-items-center">
-            <a class="navbar-brand fw-bold fs-4" href="/">🎵 Louvemos Digital</a>
-            
-            <div class="d-flex align-items-center gap-3">
-                <select id="themeSelector" class="form-select form-select-sm bg-dark text-white border-secondary" style="width: 130px;">
-                    <option value="dark">🌙 Escuro</option>
-                    <option value="light">☀️ Claro</option>
-                </select>
-
-                {% if eh_admin %}
-                    <span class="navbar-text text-white fw-bold">Modo Admin | <a href="/logout" class="text-warning text-decoration-none">Sair</a></span>
-                {% endif %}
-            </div>
-        </div>
-    </nav>
-
-    <div class="container flex-grow-1">
-        
-        {% if eh_admin %}
-        <div class="admin-panel p-4 rounded mb-4 shadow">
-            <h5 class="fw-bold text-warning mb-3">⚙ Central de Customização do Admin</h5>
-            <div class="row g-3">
-                <div class="col-md-4 border-end border-secondary">
-                    <label class="form-label text-white-50 small fw-bold">GERENCIAR MÚSICAS</label>
-                    <a href="/novo" class="btn btn-success fw-bold w-100 py-2">➕ Cadastrar Nova Música</a>
-                </div>
-                <div class="col-md-8">
-                    <label class="form-label text-white-50 small fw-bold">IMAGEM DE FUNDO (CORTAR & REDIMENSIONAR)</label>
-                    <input type="file" id="imageInput" class="form-control bg-dark text-white border-secondary" accept="image/*">
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
-        <div class="row mb-4">
-            <div class="col">
-                <h2 class="fw-bold text-title mb-0">Músicas Disponíveis</h2>
-            </div>
-        </div>
-
-        <div class="row mb-5">
-            <div class="col-md-8 mx-auto">
-                <form method="GET" action="/" class="d-flex gap-2">
-                    <input type="text" name="search" class="form-control form-control-lg shadow bg-white text-dark" 
-                           placeholder="Digite o título ou artista..." value="{{ termo_busca }}">
-                    <button type="submit" class="btn btn-primary btn-lg fw-bold shadow px-4">Pesquisar</button>
-                    {% if termo_busca %}
-                        <a href="/" class="btn btn-outline-light btn-lg fw-bold">Limpar</a>
-                    {% endif %}
-                </form>
-            </div>
-        </div>
-
-        <div class="row row-cols-1 row-cols-md-2 g-4 mb-5">
-            {% for musica in lista_de_musicas %}
-            <div class="col">
-                <div class="card-custom h-100 p-3 d-flex flex-column justify-content-between">
-                    <div>
-                        <h4 class="fw-bold mb-1">{{ musica.titulo }}</h4>
-                        <p class="text-muted mb-3">Por: {{ musica.artista }}</p>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="badge bg-light text-dark fw-bold px-3 py-2">Tom: {{ musica.tom }}</span>
-                        
-                        <div class="d-flex gap-2">
-                            {% if eh_admin %}
-                            <form action="/deletar/{{ musica.id }}" method="POST" onsubmit="return confirm('Tem certeza que deseja apagar permanentemente esta música?');">
-                                <button type="submit" class="btn btn-outline-danger btn-sm fw-bold">🗑️ Excluir</button>
-                            </form>
-                            {% endif %}
-                            <a href="/musica/{{ musica.id }}" class="btn btn-outline-primary btn-sm fw-bold px-3">Acessar</a>
+<body>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 container-principal">
+            <h1 class="text-center text-warning mb-4">Louvemos Digital 🎵</h1>
+            <div class="list-group">
+                {% for id_m, m in musicas.items() %}
+                    <a href="/musica/{{ id_m }}" class="list-group-item list-group-item-action item-musica d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ m.titulo }}</strong> <small class="text-white-50">- {{ m.artista }}</small>
                         </div>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-
-    <div class="modal fade text-dark" id="cropperModal" data-bs-backdrop="static" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold">✂️ Ajustar, Cortar e Redimensionar Imagem</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="img-container">
-                        <img id="imageToCrop" src="">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" id="saveCroppedImage" class="btn btn-warning fw-bold">💾 Aplicar e Salvar Fundo</button>
-                </div>
+                        <span class="badge bg-warning text-dark">{{ m.tom }}</span>
+                    </a>
+                {% endfor %}
             </div>
         </div>
     </div>
-
-    <footer class="text-center py-3 mt-auto bg-dark border-top border-secondary">
-        <div class="container">
-            {% if not eh_admin %}
-                <a href="/login" class="text-white-50 text-decoration-none small">🔒 Área do Administrador</a>
-            {% else %}
-                <span class="text-white-50 small">Logado como Administrador</span>
-            {% endif %}
-        </div>
-    </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-
-    <script>
-        const themeSelector = document.getElementById('themeSelector');
-        const currentTheme = localStorage.getItem('theme') || 'dark';
-        document.documentElement.setAttribute('data-bs-theme', currentTheme);
-        themeSelector.value = currentTheme;
-
-        themeSelector.addEventListener('change', (e) => {
-            const chosenTheme = e.target.value;
-            document.documentElement.setAttribute('data-bs-theme', chosenTheme);
-            localStorage.setItem('theme', chosenTheme);
-        });
-
-        let cropper;
-        const imageInput = document.getElementById('imageInput');
-        const imageToCrop = document.getElementById('imageToCrop');
-        const cropperModal = new bootstrap.Modal(document.getElementById('cropperModal'));
-        const saveButton = document.getElementById('saveCroppedImage');
-
-        imageInput.addEventListener('change', function(e) {
-            const files = e.target.files;
-            if (files && files.length > 0) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    imageToCrop.src = event.target.result;
-                    cropperModal.show();
-                };
-                reader.readAsDataURL(files[0]);
-            }
-        });
-
-        document.getElementById('cropperModal').addEventListener('shown.bs.modal', function() {
-            cropper = new Cropper(imageToCrop, {
-                aspectRatio: 16 / 9,
-                viewMode: 1,
-                background: false,
-                autoCropArea: 1,
-            });
-        });
-
-        document.getElementById('cropperModal').addEventListener('hidden.bs.modal', function() {
-            if (cropper) { cropper.destroy(); }
-            imageInput.value = "";
-        });
-
-        saveButton.addEventListener('click', function() {
-            if (!cropper) return;
-            cropper.getCroppedCanvas({ width: 1920, height: 1080 }).toBlob(function(blob) {
-                const formData = new FormData();
-                formData.append('imagem_fundo', blob, 'unnamed.jpg');
-                saveButton.disabled = true;
-                saveButton.innerText = "Processando...";
-
-                fetch('/alterar-fundo', { method: 'POST', body: formData })
-                .then(response => {
-                    if (response.ok) { window.location.reload(true); } 
-                    else { alert('Erro ao salvar imagem.'); saveButton.disabled = false; }
-                });
-            }, 'image/jpeg', 0.85);
-        });
-    </script>
+</div>
 </body>
 </html>
