@@ -1,148 +1,148 @@
-import os
-from flask import Flask, render_template, request, redirect, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+import re
 
 app = Flask(__name__)
+app.secret_key = 'chave_secreta_louvemos_digital'
 
-app.secret_key = 'chave_secreta_para_o_cancioneiro'
-SENHA_ADMIN = 'admin123'
+# LISTA DE NOTAS PARA TRANSPOSIÇÃO DE TOM (Matriz de 12 semitons)
+NOTAS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
-PASTA_STATIC = os.path.join(app.root_path, 'static')
-
-# Nosso "Banco de Dados" provisório
-MUSICAS = [
-    {
-        "id": 1,
-        "titulo": "Ninguém te Ama como Eu",
-        "artista": "Anjos de Resgate",
-        "tom": "G",
-        "letra_cifra": "G                   Bm\nTenho esperado este momento\nC             Am          D\nTenho esperado que viesses a mim"
-    },
-    {
-        "id": 2,
-        "titulo": "Como És Lindo",
-        "artista": "Vida Reluz",
-        "tom": "D",
-        "letra_cifra": "D              A         Bm\nOlho em teus olhos e calo-me\nG              Em        A\nBeijo teus pés e adoro-te"
+# BANCO DE DADOS EM MEMÓRIA (Músicas Padrão)
+musicas = {
+    1: {
+        'titulo': 'Exemplo de Cifra',
+        'artista': 'Ministério de Música',
+        'tom': 'E',
+        'letra': 'G        D\nLouvemos ao Senhor\nEm        C\nCom toda nossa alma e amor'
     }
-]
+}
+proximo_id = 2
 
+# FUNÇÃO MATEMÁTICA PARA MUDAR O TOM DOS ACORDES
+def transpor_letra(texto, semitons):
+    if semitons == 0:
+        return texto
+    
+    def transpor_acorde(match):
+        acorde = match.group(0)
+        nota_match = re.match(r'[A-G]#?', acorde)
+        if not nota_match:
+            return acorde
+        
+        nota_original = nota_match.group(0)
+        resto_acorde = acorde[len(nota_original):]
+        
+        if nota_original in NOTAS:
+            idx = NOTAS.index(nota_original)
+            novo_idx = (idx + semitons) % 12
+            return NOTAS[novo_idx] + resto_acorde
+        return acorde
+
+    # Detecta padrões de acordes isolados nas linhas de cifra
+    padrao_acorde = r'\b[A-G](#)?(m|maj|min|7|9|4|sus|aug|dim)?\b'
+    return re.sub(padrao_acorde, transpor_acorde, texto)
+
+# ROTA DA PÁGINA INICIAL (LISTA DE MÚSICAS)
 @app.route('/')
-def home():
-    termo_busca = request.args.get('search', '').strip().lower()
-    if termo_busca:
-        musicas_filtradas = [m for m in MUSICAS if termo_busca in m["titulo"].lower() or termo_busca in m["artista"].lower()]
-    else:
-        musicas_filtradas = MUSICAS
-
-    eh_admin = session.get('admin_logado', False)
-    return render_template('index.html', lista_de_musicas=musicas_filtradas, termo_busca=termo_busca, eh_admin=eh_admin)
-
-
-# ROTA DA MÚSICA TOTALMENTE LIMPA E DIRETA
-@app.route('/musica/<int:musica_id>')
-def exibir_musica(musica_id):
-    musica_encontrada = None
-    for m in MUSICAS:
-        if m["id"] == musica_id:
-            musica_encontrada = m
-            break
-            
-    if musica_encontrada:
-        eh_admin = session.get('admin_logado', False)
-        return render_template('musica.html', dados_da_musica=musica_encontrada, eh_admin=eh_admin)
+def index():
+    busca = request.args.get('busca', '').lower()
+    musicas_filtradas = {}
     
-    return "<h1>Música não encontrada!</h1>", 404
-
-
-@app.route('/novo', methods=['GET', 'POST'])
-def nova_musica():
-    if not session.get('admin_logado', False):
-        return redirect('/login')
-
-    if request.method == 'POST':
-        titulo = request.form['titulo']
-        artista = request.form['artista']
-        tom = request.form['tom'].upper().strip()
-        letra_cifra = request.form['letra_cifra']
-        
-        novo_id = len(MUSICAS) + 1
-        nova = {
-            "id": novo_id,
-            "titulo": titulo,
-            "artista": artista,
-            "tom": tom,
-            "letra_cifra": letra_cifra
-        }
-        MUSICAS.append(nova)
-        return redirect('/')
-        
-    return render_template('novo.html')
-
-
-@app.route('/editar/<int:musica_id>', methods=['GET', 'POST'])
-def editar_musica(musica_id):
-    if not session.get('admin_logado', False):
-        return redirect('/login')
-
-    musica_encontrada = None
-    for m in MUSICAS:
-        if m["id"] == musica_id:
-            musica_encontrada = m
-            break
-
-    if not musica_encontrada:
-        return "<h1>Música não encontrada!</h1>", 404
-
-    if request.method == 'POST':
-        musica_encontrada['titulo'] = request.form['titulo']
-        musica_encontrada['artista'] = request.form['artista']
-        musica_encontrada['tom'] = request.form['tom'].upper().strip()
-        musica_encontrada['letra_cifra'] = request.form['letra_cifra']
-        return redirect(f'/musica/{musica_id}')
-
-    return render_template('editar.html', musica=musica_encontrada)
-
-
-@app.route('/deletar/<int:musica_id>', methods=['POST', 'GET'])
-def deletar_musica(musica_id):
-    if not session.get('admin_logado', False):
-        return redirect('/login')
-    
-    global MUSICAS
-    MUSICAS = [m for m in MUSICAS if m["id"] != musica_id]
-    return redirect('/')
-
-
-@app.route('/alterar-fundo', methods=['POST'])
-def alterar_fundo():
-    if not session.get('admin_logado', False):
-        return redirect('/login')
-        
-    if 'imagem_fundo' in request.files:
-        arquivo = request.files['imagem_fundo']
-        if arquivo.filename != '':
-            caminho_salvamento = os.path.join(PASTA_STATIC, 'unnamed.jpg')
-            arquivo.save(caminho_salvamento)
+    for id_m, m in musicas.items():
+        if busca in m['titulo'].lower() or busca in m['artista'].lower():
+            musicas_filtradas[id_m] = m
             
-    return redirect('/')
+    return render_template('index.html', musicas=musicas_filtradas, logado=session.get('logado'))
 
+# ROTA DA ABA DE LETRAS E MUDANÇA DE TOM
+@app.route('/musica/<int:id_musica>')
+def ver_musica(id_musica):
+    semitons = request.args.get('semitons', default=0, type=int)
+    musica = musicas.get(id_musica)
+    
+    if not musica:
+        flash('Música não encontrada!', 'danger')
+        return redirect(url_for('index'))
+        
+    letra_transposta = transpor_letra(musica['letra'], semitons)
+    
+    return render_template('musica.html', 
+                           musica=musica, 
+                           id_musica=id_musica, 
+                           letra_transposta=letra_transposta, 
+                           semitons=semitons)
 
+# ROTA DE LOGIN DO ADMINISTRADOR
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    erro = None
     if request.method == 'POST':
-        senha_digitada = request.form['senha']
-        if senha_digitada == SENHA_ADMIN:
-            session['admin_logado'] = True
-            return redirect('/')
+        usuario = request.form.get('usuario')
+        senha = request.form.get('senha')
+        
+        if usuario == 'admin' and senha == 'admin123':
+            session['logado'] = True
+            flash('Login realizado com sucesso!', 'success')
+            return redirect(url_for('index'))
         else:
-            erro = "Senha incorreta! Tente novamente."
-    return render_template('login.html', erro=erro)
+            flash('Usuário ou senha incorretos.', 'danger')
+            
+    return render_template('login.html')
 
+# ROTA PARA LOGOUT
 @app.route('/logout')
 def logout():
-    session.pop('admin_logado', None)
-    return redirect('/')
+    session.pop('logado', None)
+    flash('Você saiu da Área do Administrador.', 'info')
+    return redirect(url_for('index'))
+
+# ROTA PARA ADICIONAR NOVA MÚSICA
+@app.route('/adicionar', methods=['POST'])
+def adicionar():
+    global proximo_id
+    if not session.get('logado'):
+        return redirect(url_for('login'))
+        
+    musicas[proximo_id] = {
+        'titulo': request.form.get('titulo'),
+        'artista': request.form.get('artista'),
+        'tom': request.form.get('tom'),
+        'letra': request.form.get('letra')
+    }
+    proximo_id += 1
+    flash('Música adicionada com sucesso!', 'success')
+    return redirect(url_for('index'))
+
+# ROTA PARA EXIBIR TELA DE EDIÇÃO
+@app.route('/editar/<int:id_musica>', methods=['GET', 'POST'])
+def editar(id_musica):
+    if not session.get('logado'):
+        return redirect(url_for('login'))
+        
+    musica = musicas.get(id_musica)
+    if not musica:
+        return redirect(url_for('index'))
+        
+    if request.method == 'POST':
+        musica['titulo'] = request.form.get('titulo')
+        musica['artista'] = request.form.get('artista')
+        musica['tom'] = request.form.get('tom')
+        musica['letra'] = request.form.get('letra')
+        flash('Música atualizada com sucesso!', 'success')
+        return redirect(url_for('index'))
+        
+    return render_template('editar.html', musica=musica, id_musica=id_musica)
+
+# ROTA PARA EXCLUIR MÚSICA
+@app.route('/deletar/<int:id_musica>')
+def deletar(id_musica):
+    if not session.get('logado'):
+        return redirect(url_for('login'))
+        
+    if id_musica in musicas:
+        del musicas[id_musica]
+        flash('Música excluída com sucesso!', 'warning')
+        
+    return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(host='0.0.0.0', port=5000, debug=True)
